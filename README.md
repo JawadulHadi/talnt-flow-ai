@@ -1,6 +1,12 @@
 # TalntFlow AI
 
+[![Live demo](https://img.shields.io/badge/demo-talntflow--ai.vercel.app-000?logo=vercel)](https://talntflow-ai.vercel.app)
+[![Release](https://img.shields.io/github/v/release/JawadulHadi/talnt-flow-ai)](https://github.com/JawadulHadi/talnt-flow-ai/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **TalntFlow AI** is a lightweight applicant tracking system (ATS) with an AI recruiting agent, structured STAR scorecards and hiring analytics.
+
+**Live demo:** https://talntflow-ai.vercel.app (demo data lives in your browser; use the reset button in the header to restore it)
 
 ## Features
 
@@ -20,6 +26,8 @@ Data is stored in the browser (localStorage) through `src/lib/ats/storage-servic
 Prerequisites: Node.js 22.12+ and npm.
 
 ```sh
+git clone https://github.com/JawadulHadi/talnt-flow-ai.git
+cd talnt-flow-ai
 npm install
 npm run dev      # http://localhost:3000
 npm test         # unit tests
@@ -37,9 +45,24 @@ npx vercel deploy --prod
 
 Optional environment variable in the Vercel project: `ANTHROPIC_API_KEY` (enables Claude for the agent and scorecards). The deployment has no user authentication, so anyone with the URL can trigger agent runs on that key. Before setting it on a public URL, add auth or Vercel Deployment Protection and set a spend limit on the key.
 
+## Documentation
+
+| Document                                     | What it covers                                                    |
+| -------------------------------------------- | ----------------------------------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, persistence and migrations, the agent loop, deployment |
+| [CHANGELOG.md](CHANGELOG.md)                 | Release history                                                   |
+| [CONTRIBUTING.md](CONTRIBUTING.md)           | Setup, required checks, project rules, release process            |
+| [SECURITY.md](SECURITY.md)                   | Reporting vulnerabilities and deployment responsibilities         |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)     | Community standards                                               |
+| [AGENTS.md](AGENTS.md)                       | Architecture rules for AI coding agents                           |
+
 ## Built with
 
 - TanStack Start & TanStack Router, React 19, TypeScript
 - Tailwind CSS with `data-theme` design tokens
 - Zustand for state
 - Anthropic SDK (`claude-opus-5-5`) for the agent, server-side only
+
+## License
+
+[MIT](LICENSE) © 2026 Jawad Ul Hadi
