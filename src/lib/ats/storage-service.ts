@@ -14,7 +14,9 @@ export const localPersistence: PersistenceAdapter = {
   kind: "local",
   getItem: (key) => {
     try {
-      return typeof window === "undefined" ? (memory.get(key) ?? null) : window.localStorage.getItem(key);
+      return typeof window === "undefined"
+        ? (memory.get(key) ?? null)
+        : window.localStorage.getItem(key);
     } catch {
       return memory.get(key) ?? null;
     }

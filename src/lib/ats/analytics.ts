@@ -12,7 +12,12 @@ export function funnel(candidates: Candidate[]) {
     const reached = candidates.filter((c) => stageIndex(c.stage) >= i).length;
     const current = candidates.filter((c) => c.stage === stage).length;
     const prev = i === 0 ? reached : candidates.filter((c) => stageIndex(c.stage) >= i - 1).length;
-    return { stage, reached, current, conversion: prev === 0 ? 0 : Math.round((reached / prev) * 100) };
+    return {
+      stage,
+      reached,
+      current,
+      conversion: prev === 0 ? 0 : Math.round((reached / prev) * 100),
+    };
   });
 }
 
@@ -90,10 +95,17 @@ export function diversity(candidates: Candidate[]) {
 }
 
 export const formatNumber = (n: number, digits = 0) =>
-  new Intl.NumberFormat("de-DE", { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(n);
+  new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  }).format(n);
 
 export const formatEuro = (n: number) =>
-  new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 /** DD/MM/YYYY */
 export function formatDate(iso: string): string {

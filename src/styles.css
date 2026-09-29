@@ -63,7 +63,6 @@
   --font-display: "Fraunces", Georgia, serif;
 }
 
-
 :root,
 [data-theme="frosted-slate"] {
   --radius: 0.9rem;
@@ -91,7 +90,10 @@
   --chart-3: oklch(0.72 0.14 160);
   --chart-4: oklch(0.7 0.15 320);
   --chart-5: oklch(0.68 0.16 30);
-  --backdrop: radial-gradient(ellipse at 15% 0%, oklch(0.42 0.09 240 / 70%), transparent 55%), radial-gradient(ellipse at 90% 100%, oklch(0.4 0.08 200 / 55%), transparent 50%), oklch(0.18 0.025 255);
+  --backdrop:
+    radial-gradient(ellipse at 15% 0%, oklch(0.42 0.09 240 / 70%), transparent 55%),
+    radial-gradient(ellipse at 90% 100%, oklch(0.4 0.08 200 / 55%), transparent 50%),
+    oklch(0.18 0.025 255);
   --glass-blur: 18px;
 }
 
@@ -118,7 +120,10 @@
   --chart-3: oklch(0.65 0.18 20);
   --chart-4: oklch(0.72 0.1 180);
   --chart-5: oklch(0.7 0.12 330);
-  --backdrop: radial-gradient(ellipse at 10% 0%, oklch(0.45 0.13 40 / 70%), transparent 55%), radial-gradient(ellipse at 90% 100%, oklch(0.38 0.12 15 / 55%), transparent 50%), oklch(0.17 0.03 30);
+  --backdrop:
+    radial-gradient(ellipse at 10% 0%, oklch(0.45 0.13 40 / 70%), transparent 55%),
+    radial-gradient(ellipse at 90% 100%, oklch(0.38 0.12 15 / 55%), transparent 50%),
+    oklch(0.17 0.03 30);
 }
 
 [data-theme="paper-light"] {
@@ -145,7 +150,8 @@
   --chart-3: oklch(0.55 0.1 160);
   --chart-4: oklch(0.7 0.12 85);
   --chart-5: oklch(0.5 0.12 330);
-  --backdrop: radial-gradient(ellipse at 0% 0%, oklch(0.93 0.03 85), transparent 60%), oklch(0.97 0.01 85);
+  --backdrop:
+    radial-gradient(ellipse at 0% 0%, oklch(0.93 0.03 85), transparent 60%), oklch(0.97 0.01 85);
   --glass-blur: 6px;
 }
 
@@ -172,7 +178,10 @@
   --chart-3: oklch(0.7 0.12 200);
   --chart-4: oklch(0.72 0.14 60);
   --chart-5: oklch(0.65 0.15 300);
-  --backdrop: radial-gradient(ellipse at 20% 0%, oklch(0.4 0.1 165 / 70%), transparent 55%), radial-gradient(ellipse at 100% 100%, oklch(0.35 0.08 200 / 55%), transparent 50%), oklch(0.16 0.03 170);
+  --backdrop:
+    radial-gradient(ellipse at 20% 0%, oklch(0.4 0.1 165 / 70%), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, oklch(0.35 0.08 200 / 55%), transparent 50%),
+    oklch(0.16 0.03 170);
 }
 
 @layer base {
@@ -189,7 +198,9 @@
     font-family: var(--font-sans);
     min-height: 100vh;
   }
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
