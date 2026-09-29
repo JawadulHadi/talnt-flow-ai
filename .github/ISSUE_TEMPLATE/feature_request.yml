@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement to TalntFlow AI.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the recruiting workflow or pain point, not just the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: If this touches the agent, it keeps the approve-before-apply model and doesn't expose contact or self-identification data to the model.

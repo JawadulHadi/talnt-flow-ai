@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/JawadulHadi/talnt-flow-ai/security/advisories/new
+    about: Report security issues privately, not in a public issue.
+  - name: Live demo
+    url: https://talntflow-ai.vercel.app
+    about: Try the latest release before filing an issue.

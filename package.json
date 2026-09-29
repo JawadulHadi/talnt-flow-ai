@@ -1,5 +1,7 @@
 {
   "name": "talntflow-ai",
+  "version": "1.0.0",
+  "license": "MIT",
   "private": true,
   "sideEffects": false,
   "type": "module",

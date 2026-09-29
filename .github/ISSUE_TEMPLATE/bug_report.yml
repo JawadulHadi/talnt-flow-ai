@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in TalntFlow AI isn't working as expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to /pipeline
+        2. Drag a candidate to Offer Sent
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Analytics
+        - Pipeline
+        - Agent
+        - Jobs
+        - Team
+        - Integrations
+        - Scorecard
+        - Deliverables / PDF export
+        - Build or deployment
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: agent-mode
+    attributes:
+      label: Agent mode
+      description: Shown as "Engine" on the Agent page.
+      options:
+        - Not agent-related
+        - Claude
+        - Local triage rules
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "e.g. Production (talntflow-ai.vercel.app), Chrome 140, Paper Light theme"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output or screenshots
+      description: Remove candidate names and any other personal data first.
