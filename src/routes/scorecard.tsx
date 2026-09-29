@@ -22,12 +22,12 @@ import type { Recommendation } from "@/lib/ats/types";
 export const Route = createFileRoute("/scorecard")({
   head: () => ({
     meta: [
-      { title: "Candidate scorecard — Qeloma Agent for Recruiter" },
+      { title: "Candidate scorecard — TalntFlow AI" },
       {
         name: "description",
         content: "Rate 10 STAR behavioural questions and get a weighted hiring recommendation.",
       },
-      { property: "og:title", content: "Candidate scorecard — Qeloma Agent for Recruiter" },
+      { property: "og:title", content: "Candidate scorecard — TalntFlow AI" },
       {
         property: "og:description",
         content: "STAR competency ratings with a weighted hiring recommendation.",
@@ -57,12 +57,12 @@ function ScorecardPage() {
 
   const runAgent = async () => {
     setBusy(true);
-    const res = await evaluateScorecard(candidate.name, questions, ratings);
+    const res = await evaluateScorecard(candidate, questions, ratings);
     setFallback(res.fallback);
     setAgentRec(res.data);
     setBusy(false);
     toast.success(
-      res.fallback ? "Recommendation calculated locally" : "Qeloma Agent recommendation ready",
+      res.fallback ? "Recommendation calculated locally" : "TalntFlow Agent recommendation ready",
     );
   };
 
@@ -182,10 +182,11 @@ function ScorecardPage() {
           </div>
           <Button className="w-full" onClick={runAgent} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
-            Ask Qeloma Agent for Recruiter
+            Ask TalntFlow Agent
           </Button>
           <p className="text-xs text-muted-foreground">
-            Source: {rec.generatedBy === "ai" ? "Qeloma Agent" : "local weighted engine"}
+            Source:{" "}
+            {rec.generatedBy === "ai" ? "Claude (TalntFlow Agent)" : "local weighted engine"}
           </p>
         </aside>
       </div>

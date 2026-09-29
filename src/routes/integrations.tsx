@@ -1,19 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Globe, Link2, LogIn, Sparkles, Unlink } from "lucide-react";
+import { CheckCircle2, Globe, Info, Link2, LogIn, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAtsStore } from "@/stores/ats-store";
+import { timeAgo } from "@/lib/ats/analytics";
 
 export const Route = createFileRoute("/integrations")({
   head: () => ({
     meta: [
-      { title: "Integrations & Job Boards — TalntFlow AI" },
+      { title: "Integrations — TalntFlow AI" },
       {
         name: "description",
-        content:
-          "Connect Google Workspace, LinkedIn, Indeed, and external job boards to sync applicants automatically.",
+        content: "Connect sign-in, job boards and HRIS systems to TalntFlow AI.",
       },
-      { property: "og:title", content: "Integrations & Job Boards — TalntFlow AI" },
+      { property: "og:title", content: "Integrations — TalntFlow AI" },
     ],
   }),
   component: IntegrationsPage,
@@ -23,42 +23,32 @@ function IntegrationsPage() {
   const integrations = useAtsStore((s) => s.integrations);
   const toggleIntegration = useAtsStore((s) => s.toggleIntegration);
 
-  const handleToggle = (id: string, name: string, connected: boolean) => {
-    toggleIntegration(id);
-    if (!connected) {
-      toast.success(`Successfully connected ${name}! Applicants will now sync automatically.`);
-    } else {
-      toast.info(`Disconnected ${name}.`);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <Sparkles className="size-3.5" /> Step 1: Authentication & Job Boards
-            </span>
-          </div>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-foreground">
-            Integrations & Job Board Sync
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in with Google Workspace or connect external job boards to unify candidate
-            pipelines into TalntFlow AI.
-          </p>
-        </div>
+      <div>
+        <p className="text-xs uppercase tracking-[0.25em] text-primary">Connections</p>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Integrations</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Sign-in, job boards and HRIS systems that feed candidates into TalntFlow AI.
+        </p>
+      </div>
+
+      <div className="flex gap-3 rounded-xl border border-border bg-secondary/60 p-3 text-sm text-secondary-foreground">
+        <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+        <p>
+          Connections are simulated in this build: toggling one records its state but exchanges no
+          data. Each provider needs OAuth credentials configured on the server before it can sync.
+        </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {integrations.map((item) => (
           <div
             key={item.id}
-            className="glass group flex flex-col justify-between rounded-2xl border border-border/70 p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:border-primary/60"
+            className="glass flex flex-col justify-between p-6 transition-all duration-300 hover:border-primary/60"
           >
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex size-12 items-center justify-center rounded-xl bg-primary/15 text-primary">
                     {item.category === "Authentication" ? (
@@ -69,36 +59,39 @@ function IntegrationsPage() {
                   </div>
                   <div>
                     <h3 className="font-display text-lg font-bold text-foreground">{item.name}</h3>
-                    <p className="text-xs text-muted-foreground">{item.category} Integration</p>
+                    <p className="text-xs text-muted-foreground">{item.category}</p>
                   </div>
                 </div>
                 {item.connected ? (
-                  <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                  <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                     <CheckCircle2 className="size-3.5" /> Connected
                   </span>
                 ) : (
                   <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-                    Disconnected
+                    Not connected
                   </span>
                 )}
               </div>
-
               <p className="mt-4 text-xs text-muted-foreground">
                 {item.connected
-                  ? `Active real-time webhooks enabled. Last synced: ${item.lastSynced ?? "Just now"}.`
-                  : "Connect with 1-click to import incoming applications and sync stage updates."}
+                  ? `Connected${item.lastSynced ? ` ${timeAgo(item.lastSynced)}` : ""}.`
+                  : item.lastSynced
+                    ? `Disconnected. Last connected ${timeAgo(item.lastSynced)}.`
+                    : "Not connected yet."}
               </p>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
-              <span className="text-[10px] text-muted-foreground">Secure OAuth 2.0 encrypted</span>
+            <div className="mt-6 flex justify-end border-t border-border/40 pt-4">
               <Button
-                onClick={() => handleToggle(item.id, item.name, item.connected)}
+                onClick={() => {
+                  toggleIntegration(item.id);
+                  toast.success(`${item.name} ${item.connected ? "disconnected" : "connected"}.`);
+                }}
                 variant={item.connected ? "outline" : "default"}
                 className={
                   item.connected
-                    ? "gap-2 border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                    : "gap-2 bg-primary text-primary-foreground"
+                    ? "gap-2 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                    : "gap-2"
                 }
               >
                 {item.connected ? (
@@ -107,7 +100,7 @@ function IntegrationsPage() {
                   </>
                 ) : (
                   <>
-                    <Link2 className="size-4" /> Connect Now
+                    <Link2 className="size-4" /> Connect
                   </>
                 )}
               </Button>

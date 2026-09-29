@@ -4,7 +4,20 @@ export type Stage = (typeof STAGES)[number];
 export const SOURCES = ["LinkedIn", "Referral", "Inbound", "Agency"] as const;
 export type Source = (typeof SOURCES)[number];
 
-export type EmailTemplate = "confirm" | "reminder" | "feedback" | "offer";
+export type EmailTemplate = "confirm" | "reminder" | "feedback" | "offer" | "rejection";
+
+export const GENDERS = ["Woman", "Man", "Non-binary"] as const;
+export type Gender = (typeof GENDERS)[number];
+
+export const REJECTION_REASONS = [
+  "Skills mismatch",
+  "Experience level",
+  "Salary expectations",
+  "Withdrew",
+  "Position filled",
+  "Other",
+] as const;
+export type RejectionReason = (typeof REJECTION_REASONS)[number];
 
 export interface CandidateComment {
   id: string;
@@ -31,7 +44,10 @@ export interface StageMove {
 
 export interface Candidate {
   id: string;
+  /** Requisition this application belongs to. */
+  jobId: string;
   name: string;
+  /** Job title at the time of application (denormalised for display). */
   role: string;
   stage: Stage;
   matchScore: number;
@@ -39,10 +55,13 @@ export interface Candidate {
   source: Source;
   sourcingCost: number;
   email: string;
-  phone: string;
-  gender: "Woman" | "Man" | "Non-binary";
-  underrepresented: boolean;
-  location: string;
+  phone?: string;
+  location?: string;
+  /** Voluntary EEO self-identification. Undefined means "not disclosed". */
+  gender?: Gender;
+  underrepresented?: boolean;
+  resumeFileName?: string;
+  rejection?: { reason: RejectionReason; at: string };
   socials: { linkedin?: string; github?: string; portfolio?: string };
   skills: { name: string; score: number }[];
   stageHistory: StageMove[];
@@ -89,22 +108,32 @@ export interface JobDescription {
 export const THEMES = ["frosted-slate", "frosted-ember", "paper-light", "signal-emerald"] as const;
 export type ThemeName = (typeof THEMES)[number];
 
+export const JOB_STATUSES = ["Active", "Draft", "Closed"] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
 export interface JobPosting {
   id: string;
   title: string;
   department: string;
   location: string;
   salary: string;
-  status: "Active" | "Draft" | "Closed";
-  applicantsCount: number;
+  status: JobStatus;
+  /** ISO timestamp. */
   postedDate: string;
 }
+
+export const TEAM_ROLES = [
+  "Owner / Admin",
+  "Hiring Manager",
+  "Senior Recruiter",
+  "Interviewer",
+] as const;
 
 export interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: "Owner / Admin" | "Hiring Manager" | "Senior Recruiter" | "Interviewer";
+  role: (typeof TEAM_ROLES)[number];
   department: string;
   status: "Active" | "Pending";
 }
@@ -114,5 +143,6 @@ export interface JobBoardIntegration {
   name: string;
   category: "Authentication" | "Job Board" | "HRIS";
   connected: boolean;
+  /** ISO timestamp of the last successful connection. */
   lastSynced?: string;
 }

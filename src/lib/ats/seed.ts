@@ -1,5 +1,155 @@
-import type { Candidate, JobDescription, Source, Stage, StarQuestion } from "./types";
+import type {
+  Candidate,
+  JobBoardIntegration,
+  JobDescription,
+  JobPosting,
+  Ratings,
+  Source,
+  Stage,
+  StarQuestion,
+  TeamMember,
+} from "./types";
 import { STAGES } from "./types";
+
+const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+
+/** Average sourcing spend per candidate, by channel. Single source of truth for sourcingCost. */
+export const costBySource: Record<Source, number> = {
+  LinkedIn: 1200,
+  Referral: 2500,
+  Inbound: 300,
+  Agency: 9000,
+};
+
+export function buildSeedJobs(): JobPosting[] {
+  return [
+    {
+      id: "job-1",
+      title: "Senior Product Designer",
+      department: "Design",
+      location: "Remote (Global)",
+      salary: "€130k – €158k",
+      status: "Active",
+      postedDate: daysAgo(45),
+    },
+    {
+      id: "job-2",
+      title: "Product Designer",
+      department: "Design",
+      location: "Hybrid (Lisbon)",
+      salary: "€75k – €95k",
+      status: "Active",
+      postedDate: daysAgo(42),
+    },
+    {
+      id: "job-3",
+      title: "Design Systems Lead",
+      department: "Design",
+      location: "Remote (EU)",
+      salary: "€120k – €145k",
+      status: "Active",
+      postedDate: daysAgo(40),
+    },
+    {
+      id: "job-4",
+      title: "UX Researcher",
+      department: "Design",
+      location: "Hybrid (Berlin)",
+      salary: "€80k – €100k",
+      status: "Active",
+      postedDate: daysAgo(38),
+    },
+    {
+      id: "job-5",
+      title: "Staff Frontend Engineer — React & TanStack",
+      department: "Engineering",
+      location: "Hybrid (Berlin / Lisbon)",
+      salary: "€140k – €175k",
+      status: "Active",
+      postedDate: daysAgo(25),
+    },
+    {
+      id: "job-6",
+      title: "Head of Product AI",
+      department: "Product",
+      location: "Remote (US/EU)",
+      salary: "$180k – $220k",
+      status: "Draft",
+      postedDate: daysAgo(10),
+    },
+  ];
+}
+
+export function buildSeedTeam(): TeamMember[] {
+  return [
+    {
+      id: "tm-1",
+      name: "Jawadul Hadi",
+      email: "jawadulhadicc@gmail.com",
+      role: "Owner / Admin",
+      department: "Executive",
+      status: "Active",
+    },
+    {
+      id: "tm-2",
+      name: "Maya Chen",
+      email: "maya@talntflow.ai",
+      role: "Hiring Manager",
+      department: "Design",
+      status: "Active",
+    },
+    {
+      id: "tm-3",
+      name: "Alex Mercer",
+      email: "alex@talntflow.ai",
+      role: "Senior Recruiter",
+      department: "Talent",
+      status: "Active",
+    },
+    {
+      id: "tm-4",
+      name: "Sarah Jenkins",
+      email: "sarah@talntflow.ai",
+      role: "Interviewer",
+      department: "Engineering",
+      status: "Active",
+    },
+  ];
+}
+
+export function buildSeedIntegrations(): JobBoardIntegration[] {
+  return [
+    {
+      id: "int-google",
+      name: "Google Workspace & Sign In",
+      category: "Authentication",
+      connected: true,
+      lastSynced: new Date(Date.now() - 5 * 60_000).toISOString(),
+    },
+    {
+      id: "int-linkedin",
+      name: "LinkedIn Talent Solutions",
+      category: "Job Board",
+      connected: true,
+      lastSynced: new Date(Date.now() - 45 * 60_000).toISOString(),
+    },
+    { id: "int-indeed", name: "Indeed Hiring Platform", category: "Job Board", connected: false },
+    { id: "int-greenhouse", name: "Greenhouse ATS", category: "HRIS", connected: false },
+    { id: "int-lever", name: "Lever Recruit", category: "HRIS", connected: false },
+  ];
+}
+
+export function buildSeedRatings(): Record<string, Ratings> {
+  return {
+    "cand-1": {
+      1: { score: 5, note: "Framed an unclear roadmap proactively" },
+      2: { score: 4, note: "Empathetic mentorship" },
+      3: { score: 5, note: "Resolved PM disagreement with data" },
+      4: { score: 4, note: "" },
+      5: { score: 3, note: "Pivot story lacked metrics" },
+    },
+  };
+}
 
 export const seedJobDescription: JobDescription = {
   title: "Senior Product Designer — Analytics & Core UI",
@@ -116,7 +266,15 @@ export const starQuestions: StarQuestion[] = [
   },
 ];
 
-const people: [string, string, Source, number, Candidate["gender"], boolean, string][] = [
+const people: [
+  string,
+  string,
+  Source,
+  number,
+  NonNullable<Candidate["gender"]>,
+  boolean,
+  string,
+][] = [
   ["Alex Rivera", "Senior Product Designer", "Referral", 94, "Man", true, "Lisbon, PT"],
   ["Priya Natarajan", "Senior Product Designer", "LinkedIn", 91, "Woman", true, "Berlin, DE"],
   ["Jonas Weber", "Product Designer", "Inbound", 78, "Man", false, "Munich, DE"],
@@ -144,14 +302,12 @@ const stagesFor: Stage[] = [
   "Screened",
   "Offer Sent",
 ];
-const costBySource: Record<Source, number> = {
-  LinkedIn: 1200,
-  Referral: 2500,
-  Inbound: 300,
-  Agency: 9000,
+const jobIdByRole: Record<string, string> = {
+  "Senior Product Designer": "job-1",
+  "Product Designer": "job-2",
+  "Design Systems Lead": "job-3",
+  "UX Researcher": "job-4",
 };
-
-const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
 
 export function buildSeedCandidates(): Candidate[] {
   return people.map(([name, role, source, match, gender, urg, location], i) => {
@@ -165,6 +321,7 @@ export function buildSeedCandidates(): Candidate[] {
     const slug = name.toLowerCase().replace(/[^a-z]+/g, "-");
     return {
       id: `cand-${i + 1}`,
+      jobId: jobIdByRole[role] ?? "job-1",
       name,
       role,
       stage,

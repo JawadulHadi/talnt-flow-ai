@@ -29,13 +29,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Recruitment analytics — Qeloma Agent for Recruiter" },
+      { title: "Recruitment analytics — TalntFlow AI" },
       {
         name: "description",
         content:
           "Live time-to-hire, source effectiveness, funnel and diversity metrics for your hiring pipeline.",
       },
-      { property: "og:title", content: "Recruitment analytics — Qeloma Agent for Recruiter" },
+      { property: "og:title", content: "Recruitment analytics — TalntFlow AI" },
       {
         property: "og:description",
         content: "Live time-to-hire, source effectiveness, funnel and diversity metrics.",
@@ -126,7 +126,7 @@ function AnalyticsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
           label="Active candidates"
-          value={formatNumber(k.total)}
+          value={formatNumber(k.active)}
           hint={`${k.hired} hired so far`}
         />
         <Kpi
@@ -285,7 +285,7 @@ function AnalyticsPage() {
 
       <Panel
         title="Diversity and inclusion"
-        subtitle="Representation among candidates who reached each stage"
+        subtitle={`Representation among candidates who reached each stage, based on voluntary self-identification (${dni[0]?.disclosed ?? 0}% disclosed)`}
       >
         <div className="h-64">
           <ResponsiveContainer>

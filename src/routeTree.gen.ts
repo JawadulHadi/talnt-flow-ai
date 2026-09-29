@@ -10,18 +10,37 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as DeliverablesRouteImport } from './routes/deliverables'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ScorecardRouteImport } from './routes/scorecard'
+import { Route as TeamRouteImport } from './routes/team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeliverablesRoute = DeliverablesRouteImport.update({
   id: '/deliverables',
   path: '/deliverables',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobsRoute = JobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -34,39 +53,85 @@ const ScorecardRoute = ScorecardRouteImport.update({
   path: '/scorecard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/deliverables': typeof DeliverablesRoute
+  '/integrations': typeof IntegrationsRoute
+  '/jobs': typeof JobsRoute
   '/pipeline': typeof PipelineRoute
   '/scorecard': typeof ScorecardRoute
+  '/team': typeof TeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/deliverables': typeof DeliverablesRoute
+  '/integrations': typeof IntegrationsRoute
+  '/jobs': typeof JobsRoute
   '/pipeline': typeof PipelineRoute
   '/scorecard': typeof ScorecardRoute
+  '/team': typeof TeamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/deliverables': typeof DeliverablesRoute
+  '/integrations': typeof IntegrationsRoute
+  '/jobs': typeof JobsRoute
   '/pipeline': typeof PipelineRoute
   '/scorecard': typeof ScorecardRoute
+  '/team': typeof TeamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/deliverables' | '/pipeline' | '/scorecard'
+  fullPaths:
+    | '/'
+    | '/agent'
+    | '/deliverables'
+    | '/integrations'
+    | '/jobs'
+    | '/pipeline'
+    | '/scorecard'
+    | '/team'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/deliverables' | '/pipeline' | '/scorecard'
-  id: '__root__' | '/' | '/deliverables' | '/pipeline' | '/scorecard'
+  to:
+    | '/'
+    | '/agent'
+    | '/deliverables'
+    | '/integrations'
+    | '/jobs'
+    | '/pipeline'
+    | '/scorecard'
+    | '/team'
+  id:
+    | '__root__'
+    | '/'
+    | '/agent'
+    | '/deliverables'
+    | '/integrations'
+    | '/jobs'
+    | '/pipeline'
+    | '/scorecard'
+    | '/team'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRoute: typeof AgentRoute
   DeliverablesRoute: typeof DeliverablesRoute
+  IntegrationsRoute: typeof IntegrationsRoute
+  JobsRoute: typeof JobsRoute
   PipelineRoute: typeof PipelineRoute
   ScorecardRoute: typeof ScorecardRoute
+  TeamRoute: typeof TeamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,11 +143,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/deliverables': {
       id: '/deliverables'
       path: '/deliverables'
       fullPath: '/deliverables'
       preLoaderRoute: typeof DeliverablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jobs': {
+      id: '/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof JobsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -99,14 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScorecardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRoute: AgentRoute,
   DeliverablesRoute: DeliverablesRoute,
+  IntegrationsRoute: IntegrationsRoute,
+  JobsRoute: JobsRoute,
   PipelineRoute: PipelineRoute,
   ScorecardRoute: ScorecardRoute,
+  TeamRoute: TeamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

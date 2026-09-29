@@ -1,16 +1,29 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { buildSeedCandidates, seedJobDescription, starQuestions } from "@/lib/ats/seed";
+import {
+  buildSeedCandidates,
+  buildSeedIntegrations,
+  buildSeedJobs,
+  buildSeedRatings,
+  buildSeedTeam,
+  costBySource,
+  seedJobDescription,
+  starQuestions,
+} from "@/lib/ats/seed";
 import { persistence } from "@/lib/ats/storage-service";
 import type {
   Candidate,
   CandidateEmailLog,
   EmailTemplate,
+  Gender,
   JobBoardIntegration,
   JobDescription,
   JobPosting,
+  JobStatus,
   Rating,
   Ratings,
+  RejectionReason,
+  Source,
   Stage,
   StarQuestion,
   TeamMember,
@@ -20,9 +33,9 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function emailFor(
   template: EmailTemplate,
-  c: Candidate,
+  c: Pick<Candidate, "name" | "role">,
 ): Pick<CandidateEmailLog, "subject" | "body"> {
-  const first = c.name.split(" ")[0] ?? c.name;
+  const first = c.name.trim().split(/\s+/)[0] || c.name;
   switch (template) {
     case "confirm":
       return {
@@ -44,14 +57,48 @@ export function emailFor(
         subject: `Your offer — ${c.role}`,
         body: `Hi ${first}, we are delighted to offer you the ${c.role} role. Your offer letter is attached.`,
       };
+    case "rejection":
+      return {
+        subject: `Your application — ${c.role}`,
+        body: `Hi ${first}, thank you for your interest in the ${c.role} role. After careful review we will not be moving forward this time. We wish you every success.`,
+      };
   }
 }
+
+const logEmail = (
+  template: EmailTemplate,
+  c: Pick<Candidate, "name" | "role">,
+  sentAt: string,
+): CandidateEmailLog => ({
+  id: uid(),
+  templateType: template,
+  ...emailFor(template, c),
+  sentAt,
+  status: "Sent",
+});
 
 const autoTemplate: Partial<Record<Stage, EmailTemplate>> = {
   Screened: "feedback",
   Interviewing: "reminder",
   "Offer Sent": "offer",
 };
+
+export interface NewCandidateInput {
+  jobId: string;
+  name: string;
+  email: string;
+  source: Source;
+  matchScore: number;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  gender?: Gender;
+  underrepresented?: boolean;
+  resumeFileName?: string;
+}
+
+export type AddCandidateResult =
+  { ok: true; id: string } | { ok: false; error: "job-not-found" | "job-not-open" | "duplicate" };
 
 interface AtsState {
   candidates: Candidate[];
@@ -63,147 +110,102 @@ interface AtsState {
   jd: JobDescription;
   scorecardCandidateId: string;
   moveStage: (id: string, stage: Stage) => void;
-  addComment: (id: string, text: string, rating: number) => void;
+  addComment: (
+    id: string,
+    text: string,
+    rating: number,
+    by?: { author: string; role: string },
+  ) => void;
   sendEmail: (id: string, template: EmailTemplate) => void;
+  rejectCandidate: (id: string, reason: RejectionReason) => void;
+  reactivateCandidate: (id: string) => void;
+  deleteCandidate: (id: string) => void;
   setRating: (candidateId: string, questionId: number, rating: Partial<Rating>) => void;
   setScorecardCandidate: (id: string) => void;
   updateJd: (jd: JobDescription) => void;
-  addJob: (job: Omit<JobPosting, "id" | "applicantsCount" | "postedDate">) => void;
-  addCandidate: (
-    candidate: Omit<Candidate, "id" | "stageHistory" | "comments" | "communications">,
-  ) => void;
-  addTeamMember: (member: Omit<TeamMember, "id" | "status">) => void;
+  addJob: (job: Omit<JobPosting, "id" | "postedDate">) => void;
+  setJobStatus: (id: string, status: JobStatus) => void;
+  addCandidate: (input: NewCandidateInput) => AddCandidateResult;
+  addTeamMember: (member: Omit<TeamMember, "id" | "status">) => boolean;
+  removeTeamMember: (id: string) => void;
   toggleIntegration: (id: string) => void;
   resetDemo: () => void;
 }
 
-const seedJobs: JobPosting[] = [
-  {
-    id: "job-1",
-    title: "Senior Product Designer — Analytics & Core UI",
-    department: "Design",
-    location: "Remote (Global)",
-    salary: "€130k – €158k",
-    status: "Active",
-    applicantsCount: 12,
-    postedDate: "2026-09-01",
-  },
-  {
-    id: "job-2",
-    title: "Staff Frontend Engineer — React & TanStack",
-    department: "Engineering",
-    location: "Hybrid (Berlin / Lisbon)",
-    salary: "€140k – €175k",
-    status: "Active",
-    applicantsCount: 8,
-    postedDate: "2026-09-05",
-  },
-  {
-    id: "job-3",
-    title: "Head of Product AI",
-    department: "Product",
-    location: "Remote (US/EU)",
-    salary: "$180k – $220k",
-    status: "Draft",
-    applicantsCount: 0,
-    postedDate: "2026-09-20",
-  },
-];
+type PersistedAts = Pick<
+  AtsState,
+  "candidates" | "jobs" | "teamMembers" | "integrations" | "ratings" | "jd" | "scorecardCandidateId"
+>;
 
-const seedTeam: TeamMember[] = [
-  {
-    id: "tm-1",
-    name: "Jawadul Hadi",
-    email: "jawadulhadicc@gmail.com",
-    role: "Owner / Admin",
-    department: "Executive",
-    status: "Active",
-  },
-  {
-    id: "tm-2",
-    name: "Maya Chen",
-    email: "maya@talntflow.ai",
-    role: "Hiring Manager",
-    department: "Design",
-    status: "Active",
-  },
-  {
-    id: "tm-3",
-    name: "Alex Mercer",
-    email: "alex@talntflow.ai",
-    role: "Senior Recruiter",
-    department: "Talent",
-    status: "Active",
-  },
-  {
-    id: "tm-4",
-    name: "Sarah Jenkins",
-    email: "sarah@talntflow.ai",
-    role: "Interviewer",
-    department: "Engineering",
-    status: "Active",
-  },
-];
-
-const seedIntegrations: JobBoardIntegration[] = [
-  {
-    id: "int-google",
-    name: "Google Workspace & Sign In",
-    category: "Authentication",
-    connected: true,
-    lastSynced: "Just now",
-  },
-  {
-    id: "int-linkedin",
-    name: "LinkedIn Talent Solutions",
-    category: "Job Board",
-    connected: true,
-    lastSynced: "10 mins ago",
-  },
-  { id: "int-indeed", name: "Indeed Hiring Platform", category: "Job Board", connected: false },
-  { id: "int-greenhouse", name: "Greenhouse ATS", category: "HRIS", connected: false },
-  { id: "int-lever", name: "Lever Recruit", category: "HRIS", connected: false },
-];
-
-const seedRatings = (): Record<string, Ratings> => ({
-  "cand-1": {
-    1: { score: 5, note: "Framed an unclear roadmap proactively" },
-    2: { score: 4, note: "Empathetic mentorship" },
-    3: { score: 5, note: "Resolved PM disagreement with data" },
-    4: { score: 4, note: "" },
-    5: { score: 3, note: "Pivot story lacked metrics" },
-  },
+const seedState = (): PersistedAts => ({
+  candidates: buildSeedCandidates(),
+  jobs: buildSeedJobs(),
+  teamMembers: buildSeedTeam(),
+  integrations: buildSeedIntegrations(),
+  ratings: buildSeedRatings(),
+  jd: seedJobDescription,
+  scorecardCandidateId: "cand-1",
 });
+
+const isIsoDate = (v: unknown) => typeof v === "string" && !Number.isNaN(Date.parse(v));
+
+/**
+ * v0 (key "qeloma-ats-v1") stored only candidates, ratings, jd and the scorecard pick.
+ * v1 adds jobs, team and integrations, links every candidate to a job, and stores
+ * integration sync times as ISO timestamps. Existing pipeline work is kept.
+ */
+export function migrateAtsState(persisted: unknown, version: number): PersistedAts {
+  const s = (persisted ?? {}) as Partial<PersistedAts>;
+  if (version >= 1) return s as PersistedAts;
+  const seed = seedState();
+  const jobs = (s.jobs ?? seed.jobs).map(
+    ({ id, title, department, location, salary, status, postedDate }) => ({
+      id,
+      title,
+      department,
+      location,
+      salary,
+      status,
+      postedDate: isIsoDate(postedDate) ? postedDate : new Date().toISOString(),
+    }),
+  );
+  const jobFor = (role: string) =>
+    jobs.find((j) => j.title === role) ?? jobs.find((j) => j.title.startsWith(role)) ?? jobs[0];
+  return {
+    ...seed,
+    ...s,
+    jobs,
+    candidates: (s.candidates ?? seed.candidates).map((c) =>
+      c.jobId ? c : { ...c, jobId: jobFor(c.role)?.id ?? "job-1" },
+    ),
+    integrations: (s.integrations ?? seed.integrations).map((i) => {
+      if (isIsoDate(i.lastSynced)) return i;
+      const { lastSynced: _drop, ...rest } = i;
+      return i.connected ? { ...rest, lastSynced: new Date().toISOString() } : rest;
+    }),
+  };
+}
 
 export const useAtsStore = create<AtsState>()(
   persist(
-    (set) => ({
-      candidates: buildSeedCandidates(),
-      jobs: seedJobs,
-      teamMembers: seedTeam,
-      integrations: seedIntegrations,
-      ratings: seedRatings(),
+    (set, get) => ({
+      ...seedState(),
       questions: starQuestions,
-      jd: seedJobDescription,
-      scorecardCandidateId: "cand-1",
       moveStage: (id, stage) =>
         set((s) => ({
           candidates: s.candidates.map((c) => {
-            if (c.id !== id || c.stage === stage) return c;
+            if (c.id !== id || c.stage === stage || c.rejection) return c;
             const now = new Date().toISOString();
             const tpl = autoTemplate[stage];
-            const log: CandidateEmailLog[] = tpl
-              ? [{ id: uid(), templateType: tpl, ...emailFor(tpl, c), sentAt: now, status: "Sent" }]
-              : [];
             return {
               ...c,
               stage,
               stageHistory: [...c.stageHistory, { stage, at: now }],
-              communications: [...log, ...c.communications],
+              communications: tpl ? [logEmail(tpl, c, now), ...c.communications] : c.communications,
             };
           }),
         })),
-      addComment: (id, text, rating) =>
+      addComment: (id, text, rating, by = { author: "You", role: "Recruiter" }) =>
         set((s) => ({
           candidates: s.candidates.map((c) =>
             c.id === id
@@ -212,8 +214,7 @@ export const useAtsStore = create<AtsState>()(
                   comments: [
                     {
                       id: uid(),
-                      author: "You",
-                      role: "Recruiter",
+                      ...by,
                       rating,
                       text,
                       timestamp: new Date().toISOString(),
@@ -231,19 +232,44 @@ export const useAtsStore = create<AtsState>()(
               ? {
                   ...c,
                   communications: [
-                    {
-                      id: uid(),
-                      templateType: template,
-                      ...emailFor(template, c),
-                      sentAt: new Date().toISOString(),
-                      status: "Sent",
-                    },
+                    logEmail(template, c, new Date().toISOString()),
                     ...c.communications,
                   ],
                 }
               : c,
           ),
         })),
+      rejectCandidate: (id, reason) =>
+        set((s) => ({
+          candidates: s.candidates.map((c) => {
+            if (c.id !== id || c.rejection) return c;
+            const now = new Date().toISOString();
+            return {
+              ...c,
+              rejection: { reason, at: now },
+              communications: [logEmail("rejection", c, now), ...c.communications],
+            };
+          }),
+        })),
+      reactivateCandidate: (id) =>
+        set((s) => ({
+          candidates: s.candidates.map((c) => {
+            if (c.id !== id || !c.rejection) return c;
+            const { rejection: _drop, ...rest } = c;
+            return rest;
+          }),
+        })),
+      deleteCandidate: (id) =>
+        set((s) => {
+          const candidates = s.candidates.filter((c) => c.id !== id);
+          const { [id]: _drop, ...ratings } = s.ratings;
+          return {
+            candidates,
+            ratings,
+            scorecardCandidateId:
+              s.scorecardCandidateId === id ? (candidates[0]?.id ?? "") : s.scorecardCandidateId,
+          };
+        }),
       setRating: (candidateId, questionId, rating) =>
         set((s) => {
           const current = s.ratings[candidateId] ?? {};
@@ -257,71 +283,76 @@ export const useAtsStore = create<AtsState>()(
         }),
       setScorecardCandidate: (id) => set({ scorecardCandidateId: id }),
       updateJd: (jd) => set({ jd }),
-      addJob: (jobData) =>
+      addJob: (job) =>
         set((s) => ({
-          jobs: [
-            {
-              id: `job-${s.jobs.length + 1}`,
-              applicantsCount: 0,
-              postedDate: new Date().toISOString().split("T")[0]!,
-              ...jobData,
-            },
-            ...s.jobs,
-          ],
+          jobs: [{ ...job, id: `job-${uid()}`, postedDate: new Date().toISOString() }, ...s.jobs],
         })),
-      addCandidate: (cData) =>
-        set((s) => {
-          const id = `cand-${s.candidates.length + 1}`;
-          const now = new Date().toISOString();
-          const newCandidate: Candidate = {
-            id,
-            stageHistory: [{ stage: cData.stage ?? "Sourced", at: now }],
-            comments: [],
-            communications: [
-              {
-                id: uid(),
-                templateType: "confirm",
-                subject: `Application received — ${cData.role}`,
-                body: `Hi ${cData.name.split(" ")[0]}, thanks for applying. We will be in touch within five working days.`,
-                sentAt: now,
-                status: "Opened",
-              },
-            ],
-            strengths: ["Fast-track profile", "Parsed via AI resume scanner"],
-            gaps: [],
-            ...cData,
-          };
-          return { candidates: [newCandidate, ...s.candidates] };
-        }),
-      addTeamMember: (m) =>
+      setJobStatus: (id, status) =>
+        set((s) => ({ jobs: s.jobs.map((j) => (j.id === id ? { ...j, status } : j)) })),
+      addCandidate: (input) => {
+        const { jobs, candidates } = get();
+        const job = jobs.find((j) => j.id === input.jobId);
+        if (!job) return { ok: false, error: "job-not-found" };
+        if (job.status !== "Active") return { ok: false, error: "job-not-open" };
+        const email = input.email.trim().toLowerCase();
+        if (candidates.some((c) => c.jobId === job.id && c.email.toLowerCase() === email)) {
+          return { ok: false, error: "duplicate" };
+        }
+        const now = new Date().toISOString();
+        const { linkedin, ...profile } = input;
+        const name = input.name.trim();
+        const candidate: Candidate = {
+          ...profile,
+          id: `cand-${uid()}`,
+          name,
+          email,
+          role: job.title,
+          stage: "Sourced",
+          matchScore: Math.max(0, Math.min(100, Math.round(input.matchScore))),
+          appliedDate: now,
+          sourcingCost: costBySource[input.source],
+          socials: linkedin ? { linkedin } : {},
+          skills: [],
+          strengths: [],
+          gaps: [],
+          stageHistory: [{ stage: "Sourced", at: now }],
+          comments: [],
+          communications: [logEmail("confirm", { name, role: job.title }, now)],
+        };
+        set({ candidates: [candidate, ...candidates] });
+        return { ok: true, id: candidate.id };
+      },
+      addTeamMember: (m) => {
+        const email = m.email.trim().toLowerCase();
+        if (get().teamMembers.some((t) => t.email.toLowerCase() === email)) return false;
         set((s) => ({
-          teamMembers: [
-            { id: `tm-${s.teamMembers.length + 1}`, status: "Active", ...m },
-            ...s.teamMembers,
-          ],
-        })),
+          teamMembers: [...s.teamMembers, { ...m, email, id: `tm-${uid()}`, status: "Pending" }],
+        }));
+        return true;
+      },
+      removeTeamMember: (id) =>
+        set((s) => ({ teamMembers: s.teamMembers.filter((t) => t.id !== id) })),
       toggleIntegration: (id) =>
         set((s) => ({
           integrations: s.integrations.map((i) =>
-            i.id === id ? { ...i, connected: !i.connected, lastSynced: "Just now" } : i,
+            i.id !== id
+              ? i
+              : i.connected
+                ? { ...i, connected: false }
+                : { ...i, connected: true, lastSynced: new Date().toISOString() },
           ),
         })),
-      resetDemo: () =>
-        set({
-          candidates: buildSeedCandidates(),
-          jobs: seedJobs,
-          teamMembers: seedTeam,
-          integrations: seedIntegrations,
-          ratings: seedRatings(),
-          jd: seedJobDescription,
-          scorecardCandidateId: "cand-1",
-        }),
+      resetDemo: () => set(seedState()),
     }),
     {
-      name: "qeloma-ats-v2",
+      // Keep the original key so existing browsers keep their pipeline; shape changes go
+      // through `version` + `migrate` instead of a new key.
+      name: "qeloma-ats-v1",
+      version: 1,
+      migrate: migrateAtsState,
       storage: createJSONStorage(() => persistence),
       skipHydration: true,
-      partialize: (s) => ({
+      partialize: (s): PersistedAts => ({
         candidates: s.candidates,
         jobs: s.jobs,
         teamMembers: s.teamMembers,
