@@ -88,3 +88,31 @@ export interface JobDescription {
 
 export const THEMES = ["frosted-slate", "frosted-ember", "paper-light", "signal-emerald"] as const;
 export type ThemeName = (typeof THEMES)[number];
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  salary: string;
+  status: "Active" | "Draft" | "Closed";
+  applicantsCount: number;
+  postedDate: string;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: "Owner / Admin" | "Hiring Manager" | "Senior Recruiter" | "Interviewer";
+  department: string;
+  status: "Active" | "Pending";
+}
+
+export interface JobBoardIntegration {
+  id: string;
+  name: string;
+  category: "Authentication" | "Job Board" | "HRIS";
+  connected: boolean;
+  lastSynced?: string;
+}

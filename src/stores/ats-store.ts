@@ -6,11 +6,14 @@ import type {
   Candidate,
   CandidateEmailLog,
   EmailTemplate,
+  JobBoardIntegration,
   JobDescription,
+  JobPosting,
   Rating,
   Ratings,
   Stage,
   StarQuestion,
+  TeamMember,
 } from "@/lib/ats/types";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -52,6 +55,9 @@ const autoTemplate: Partial<Record<Stage, EmailTemplate>> = {
 
 interface AtsState {
   candidates: Candidate[];
+  jobs: JobPosting[];
+  teamMembers: TeamMember[];
+  integrations: JobBoardIntegration[];
   ratings: Record<string, Ratings>;
   questions: StarQuestion[];
   jd: JobDescription;
@@ -62,8 +68,102 @@ interface AtsState {
   setRating: (candidateId: string, questionId: number, rating: Partial<Rating>) => void;
   setScorecardCandidate: (id: string) => void;
   updateJd: (jd: JobDescription) => void;
+  addJob: (job: Omit<JobPosting, "id" | "applicantsCount" | "postedDate">) => void;
+  addCandidate: (
+    candidate: Omit<Candidate, "id" | "stageHistory" | "comments" | "communications">,
+  ) => void;
+  addTeamMember: (member: Omit<TeamMember, "id" | "status">) => void;
+  toggleIntegration: (id: string) => void;
   resetDemo: () => void;
 }
+
+const seedJobs: JobPosting[] = [
+  {
+    id: "job-1",
+    title: "Senior Product Designer — Analytics & Core UI",
+    department: "Design",
+    location: "Remote (Global)",
+    salary: "€130k – €158k",
+    status: "Active",
+    applicantsCount: 12,
+    postedDate: "2026-09-01",
+  },
+  {
+    id: "job-2",
+    title: "Staff Frontend Engineer — React & TanStack",
+    department: "Engineering",
+    location: "Hybrid (Berlin / Lisbon)",
+    salary: "€140k – €175k",
+    status: "Active",
+    applicantsCount: 8,
+    postedDate: "2026-09-05",
+  },
+  {
+    id: "job-3",
+    title: "Head of Product AI",
+    department: "Product",
+    location: "Remote (US/EU)",
+    salary: "$180k – $220k",
+    status: "Draft",
+    applicantsCount: 0,
+    postedDate: "2026-09-20",
+  },
+];
+
+const seedTeam: TeamMember[] = [
+  {
+    id: "tm-1",
+    name: "Jawadul Hadi",
+    email: "jawadulhadicc@gmail.com",
+    role: "Owner / Admin",
+    department: "Executive",
+    status: "Active",
+  },
+  {
+    id: "tm-2",
+    name: "Maya Chen",
+    email: "maya@talntflow.ai",
+    role: "Hiring Manager",
+    department: "Design",
+    status: "Active",
+  },
+  {
+    id: "tm-3",
+    name: "Alex Mercer",
+    email: "alex@talntflow.ai",
+    role: "Senior Recruiter",
+    department: "Talent",
+    status: "Active",
+  },
+  {
+    id: "tm-4",
+    name: "Sarah Jenkins",
+    email: "sarah@talntflow.ai",
+    role: "Interviewer",
+    department: "Engineering",
+    status: "Active",
+  },
+];
+
+const seedIntegrations: JobBoardIntegration[] = [
+  {
+    id: "int-google",
+    name: "Google Workspace & Sign In",
+    category: "Authentication",
+    connected: true,
+    lastSynced: "Just now",
+  },
+  {
+    id: "int-linkedin",
+    name: "LinkedIn Talent Solutions",
+    category: "Job Board",
+    connected: true,
+    lastSynced: "10 mins ago",
+  },
+  { id: "int-indeed", name: "Indeed Hiring Platform", category: "Job Board", connected: false },
+  { id: "int-greenhouse", name: "Greenhouse ATS", category: "HRIS", connected: false },
+  { id: "int-lever", name: "Lever Recruit", category: "HRIS", connected: false },
+];
 
 const seedRatings = (): Record<string, Ratings> => ({
   "cand-1": {
@@ -79,6 +179,9 @@ export const useAtsStore = create<AtsState>()(
   persist(
     (set) => ({
       candidates: buildSeedCandidates(),
+      jobs: seedJobs,
+      teamMembers: seedTeam,
+      integrations: seedIntegrations,
       ratings: seedRatings(),
       questions: starQuestions,
       jd: seedJobDescription,
@@ -154,20 +257,75 @@ export const useAtsStore = create<AtsState>()(
         }),
       setScorecardCandidate: (id) => set({ scorecardCandidateId: id }),
       updateJd: (jd) => set({ jd }),
+      addJob: (jobData) =>
+        set((s) => ({
+          jobs: [
+            {
+              id: `job-${s.jobs.length + 1}`,
+              applicantsCount: 0,
+              postedDate: new Date().toISOString().split("T")[0]!,
+              ...jobData,
+            },
+            ...s.jobs,
+          ],
+        })),
+      addCandidate: (cData) =>
+        set((s) => {
+          const id = `cand-${s.candidates.length + 1}`;
+          const now = new Date().toISOString();
+          const newCandidate: Candidate = {
+            id,
+            stageHistory: [{ stage: cData.stage ?? "Sourced", at: now }],
+            comments: [],
+            communications: [
+              {
+                id: uid(),
+                templateType: "confirm",
+                subject: `Application received — ${cData.role}`,
+                body: `Hi ${cData.name.split(" ")[0]}, thanks for applying. We will be in touch within five working days.`,
+                sentAt: now,
+                status: "Opened",
+              },
+            ],
+            strengths: ["Fast-track profile", "Parsed via AI resume scanner"],
+            gaps: [],
+            ...cData,
+          };
+          return { candidates: [newCandidate, ...s.candidates] };
+        }),
+      addTeamMember: (m) =>
+        set((s) => ({
+          teamMembers: [
+            { id: `tm-${s.teamMembers.length + 1}`, status: "Active", ...m },
+            ...s.teamMembers,
+          ],
+        })),
+      toggleIntegration: (id) =>
+        set((s) => ({
+          integrations: s.integrations.map((i) =>
+            i.id === id ? { ...i, connected: !i.connected, lastSynced: "Just now" } : i,
+          ),
+        })),
       resetDemo: () =>
         set({
           candidates: buildSeedCandidates(),
+          jobs: seedJobs,
+          teamMembers: seedTeam,
+          integrations: seedIntegrations,
           ratings: seedRatings(),
           jd: seedJobDescription,
           scorecardCandidateId: "cand-1",
         }),
     }),
     {
-      name: "qeloma-ats-v1",
+      name: "qeloma-ats-v2",
       storage: createJSONStorage(() => persistence),
       skipHydration: true,
       partialize: (s) => ({
         candidates: s.candidates,
+        jobs: s.jobs,
+        teamMembers: s.teamMembers,
+        integrations: s.integrations,
         ratings: s.ratings,
         jd: s.jd,
         scorecardCandidateId: s.scorecardCandidateId,

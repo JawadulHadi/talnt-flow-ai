@@ -2,11 +2,14 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import {
   BarChart3,
+  Briefcase,
   ClipboardCheck,
   FileText,
   KanbanSquare,
   RotateCcw,
+  Share2,
   Sparkles,
+  Users,
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,9 @@ import { THEMES, type ThemeName } from "@/lib/ats/types";
 const nav = [
   { to: "/", label: "Analytics", icon: BarChart3 },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+  { to: "/jobs", label: "Jobs", icon: Briefcase },
+  { to: "/team", label: "Team", icon: Users },
+  { to: "/integrations", label: "Integrations", icon: Share2 },
   { to: "/scorecard", label: "Scorecard", icon: ClipboardCheck },
   { to: "/deliverables", label: "Deliverables", icon: FileText },
 ] as const;
