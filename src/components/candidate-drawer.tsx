@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Github, Globe, Linkedin, Mail, Star } from "lucide-react";
+import { FileText, Github, Globe, Linkedin, Mail, Star, Trash2, Undo2, UserX } from "lucide-react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -13,9 +13,32 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAtsStore } from "@/stores/ats-store";
 import { formatDate } from "@/lib/ats/analytics";
-import { STAGES, type EmailTemplate } from "@/lib/ats/types";
+import {
+  REJECTION_REASONS,
+  STAGES,
+  type EmailTemplate,
+  type RejectionReason,
+} from "@/lib/ats/types";
 import { cn } from "@/lib/utils";
 
 const templates: { id: EmailTemplate; label: string }[] = [
@@ -69,8 +92,12 @@ export function CandidateDrawer({
   const moveStage = useAtsStore((s) => s.moveStage);
   const addComment = useAtsStore((s) => s.addComment);
   const sendEmail = useAtsStore((s) => s.sendEmail);
+  const rejectCandidate = useAtsStore((s) => s.rejectCandidate);
+  const reactivateCandidate = useAtsStore((s) => s.reactivateCandidate);
+  const deleteCandidate = useAtsStore((s) => s.deleteCandidate);
   const [text, setText] = useState("");
   const [rating, setRating] = useState(4);
+  const [reason, setReason] = useState<RejectionReason>(REJECTION_REASONS[0]);
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
@@ -80,25 +107,76 @@ export function CandidateDrawer({
             <SheetHeader>
               <SheetTitle className="font-display text-2xl">{candidate.name}</SheetTitle>
               <SheetDescription>
-                {candidate.role} · {candidate.location} · applied{" "}
-                {formatDate(candidate.appliedDate)}
+                {[
+                  candidate.role,
+                  candidate.location,
+                  `applied ${formatDate(candidate.appliedDate)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-4 flex flex-wrap gap-1.5 px-4">
-              {STAGES.map((s) => (
+            {candidate.rejection ? (
+              <div className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                <span>
+                  <strong>Rejected</strong> at {candidate.stage} · {candidate.rejection.reason} ·{" "}
+                  {formatDate(candidate.rejection.at)}
+                </span>
                 <Button
-                  key={s}
                   size="sm"
-                  variant={candidate.stage === s ? "default" : "outline"}
+                  variant="outline"
                   onClick={() => {
-                    moveStage(candidate.id, s);
-                    toast.success(`${candidate.name} moved to ${s}`);
+                    reactivateCandidate(candidate.id);
+                    toast.success(`${candidate.name} is back in the pipeline`);
                   }}
                 >
-                  {s}
+                  <Undo2 className="size-4" /> Reactivate
                 </Button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3 px-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {STAGES.map((s) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={candidate.stage === s ? "default" : "outline"}
+                      onClick={() => {
+                        moveStage(candidate.id, s);
+                        toast.success(`${candidate.name} moved to ${s}`);
+                      }}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={reason} onValueChange={(v) => setReason(v as RejectionReason)}>
+                    <SelectTrigger className="h-8 w-48" aria-label="Rejection reason">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REJECTION_REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => {
+                      rejectCandidate(candidate.id, reason);
+                      toast.success(`${candidate.name} rejected — rejection email logged`);
+                    }}
+                  >
+                    <UserX className="size-4" /> Reject
+                  </Button>
+                </div>
+              </div>
+            )}
             <Tabs defaultValue="profile" className="mt-4 px-4 pb-6">
               <TabsList className="w-full">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -113,7 +191,7 @@ export function CandidateDrawer({
                   <Badge variant="secondary">{candidate.stage}</Badge>
                 </div>
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold">Social enrichment</h3>
+                  <h3 className="mb-2 text-sm font-semibold">Contact & links</h3>
                   <div className="flex flex-wrap gap-2 text-sm">
                     <a
                       className="inline-flex items-center gap-1 text-primary hover:underline"
@@ -144,6 +222,12 @@ export function CandidateDrawer({
                         GitHub
                       </a>
                     )}
+                    {candidate.resumeFileName && (
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <FileText className="size-4" />
+                        {candidate.resumeFileName}
+                      </span>
+                    )}
                     {candidate.socials.portfolio && (
                       <a
                         className="inline-flex items-center gap-1 text-primary hover:underline"
@@ -159,6 +243,9 @@ export function CandidateDrawer({
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">Skills assessment</h3>
+                  {candidate.skills.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Not assessed yet.</p>
+                  )}
                   {candidate.skills.map((s) => (
                     <div key={s.name}>
                       <div className="flex justify-between text-xs text-muted-foreground">
@@ -176,6 +263,7 @@ export function CandidateDrawer({
                       {candidate.strengths.map((s) => (
                         <li key={s}>{s}</li>
                       ))}
+                      {candidate.strengths.length === 0 && <li>None recorded yet</li>}
                     </ul>
                   </div>
                   <div>
@@ -184,6 +272,7 @@ export function CandidateDrawer({
                       {candidate.gaps.map((s) => (
                         <li key={s}>{s}</li>
                       ))}
+                      {candidate.gaps.length === 0 && <li>None recorded yet</li>}
                     </ul>
                   </div>
                 </div>
@@ -197,6 +286,40 @@ export function CandidateDrawer({
                     ))}
                   </ol>
                 </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" /> Delete candidate data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {candidate.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the profile, feedback, emails and scorecard, for
+                        example to honour a data-erasure request. It can't be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => {
+                          const name = candidate.name;
+                          onClose();
+                          deleteCandidate(candidate.id);
+                          toast.success(`${name}'s data was deleted`);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </TabsContent>
 
               <TabsContent value="comments" className="space-y-3 pt-3 animate-in fade-in">
@@ -246,7 +369,7 @@ export function CandidateDrawer({
               <TabsContent value="comms" className="space-y-3 pt-3 animate-in fade-in">
                 <p className="text-xs text-muted-foreground">
                   Emails are logged automatically when a candidate moves to Screened, Interviewing
-                  or Offer sent.
+                  or Offer Sent, and when they are rejected.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {templates.map((t) => (
@@ -254,6 +377,7 @@ export function CandidateDrawer({
                       key={t.id}
                       size="sm"
                       variant="outline"
+                      disabled={Boolean(candidate.rejection)}
                       onClick={() => {
                         sendEmail(candidate.id, t.id);
                         toast.success(`${t.label} sent`);

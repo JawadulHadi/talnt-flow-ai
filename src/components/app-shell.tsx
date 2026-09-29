@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
+  Bot,
   Briefcase,
   ClipboardCheck,
   FileText,
@@ -28,6 +29,7 @@ import { THEMES, type ThemeName } from "@/lib/ats/types";
 const nav = [
   { to: "/", label: "Analytics", icon: BarChart3 },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+  { to: "/agent", label: "Agent", icon: Bot },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/team", label: "Team", icon: Users },
   { to: "/integrations", label: "Integrations", icon: Share2 },
@@ -50,9 +52,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const setFallback = useUiStore((s) => s.setFallback);
   const resetDemo = useAtsStore((s) => s.resetDemo);
 
+  // All ATS data lives in browser storage, so pages render only after it is loaded.
+  // Rendering the server's seed data first would flash demo data and mismatch on hydration.
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    void useAtsStore.persist.rehydrate();
-    void useUiStore.persist.rehydrate();
+    void Promise.all([useAtsStore.persist.rehydrate(), useUiStore.persist.rehydrate()]).then(() =>
+      setHydrated(true),
+    );
     void checkAgentHealth().then((ok) => setFallback(!ok));
   }, [setFallback]);
 
@@ -68,8 +75,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="flex items-center justify-center gap-2 border-b border-border bg-accent/90 px-4 py-2 text-sm font-medium text-accent-foreground animate-in fade-in slide-in-from-top-2"
         >
           <WifiOff className="size-4" />
-          Qeloma Agent for Recruiter is offline. You are using the resilient local version —
-          recommendations are calculated on this device.
+          TalntFlow Agent is offline. You are using the local engine — recommendations and triage
+          run on this device.
         </div>
       )}
       <header className="sticky top-0 z-30 border-b border-border bg-background/40 backdrop-blur-xl">
@@ -125,7 +132,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         key={pathname}
         className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in slide-in-from-bottom-2 duration-500"
       >
-        {children}
+        {hydrated ? (
+          children
+        ) : (
+          <div className="glass h-64 animate-pulse" role="status" aria-label="Loading workspace" />
+        )}
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Briefcase, FileUp, Plus, Search, Sparkles, UserPlus, Users } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { Plus, Search, Sparkles, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,133 +20,85 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AddCandidateDialog } from "@/components/add-candidate-dialog";
 import { useAtsStore } from "@/stores/ats-store";
-import type { Stage, Source } from "@/lib/ats/types";
+import { formatDate, isOpenApplication } from "@/lib/ats/analytics";
+import type { JobStatus } from "@/lib/ats/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/jobs")({
   head: () => ({
     meta: [
-      { title: "Job Postings & Positions — TalntFlow AI" },
+      { title: "Jobs — TalntFlow AI" },
       {
         name: "description",
-        content:
-          "Manage job openings, post new positions, and add candidates via resume upload or manual entry.",
+        content: "Open, publish and close job requisitions and add candidates to them.",
       },
-      { property: "og:title", content: "Job Postings & Positions — TalntFlow AI" },
+      { property: "og:title", content: "Jobs — TalntFlow AI" },
     ],
   }),
   component: JobsPage,
 });
 
+const DEPARTMENTS = ["Engineering", "Design", "Product", "Growth", "Talent"];
+
+const statusStyle: Record<JobStatus, string> = {
+  Active: "border-primary/30 bg-primary/10 text-primary",
+  Draft: "border-border bg-secondary text-secondary-foreground",
+  Closed: "border-border bg-muted text-muted-foreground",
+};
+
+const nextStatus: Record<JobStatus, { to: JobStatus; label: string }> = {
+  Draft: { to: "Active", label: "Publish" },
+  Active: { to: "Closed", label: "Close" },
+  Closed: { to: "Active", label: "Reopen" },
+};
+
 function JobsPage() {
   const jobs = useAtsStore((s) => s.jobs);
-  const addJob = useAtsStore((s) => s.addJob);
-  const addCandidate = useAtsStore((s) => s.addCandidate);
+  const candidates = useAtsStore((s) => s.candidates);
+  const setJobStatus = useAtsStore((s) => s.setJobStatus);
 
   const [query, setQuery] = useState("");
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [candidateModalOpen, setCandidateModalOpen] = useState(false);
+  const [candidateJobId, setCandidateJobId] = useState<string | undefined>();
 
-  // New Job Form
-  const [newTitle, setNewTitle] = useState("");
-  const [newDept, setNewDept] = useState("Engineering");
-  const [newLocation, setNewLocation] = useState("Remote (Global)");
-  const [newSalary, setNewSalary] = useState("€120k – €150k");
+  const openByJob = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of candidates) {
+      if (isOpenApplication(c)) counts.set(c.jobId, (counts.get(c.jobId) ?? 0) + 1);
+    }
+    return counts;
+  }, [candidates]);
 
-  // New Candidate Form
-  const [candName, setCandName] = useState("");
-  const [candRole, setCandRole] = useState(jobs[0]?.title ?? "Senior Product Designer");
-  const [candEmail, setCandEmail] = useState("");
-  const [candSource, setCandSource] = useState<Source>("LinkedIn");
-  const [candStage, setCandStage] = useState<Stage>("Sourced");
-  const [candMatch, setCandMatch] = useState(88);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-
+  const q = query.trim().toLowerCase();
   const filteredJobs = jobs.filter(
-    (j) =>
-      !query ||
-      j.title.toLowerCase().includes(query.toLowerCase()) ||
-      j.department.toLowerCase().includes(query.toLowerCase()),
+    (j) => !q || j.title.toLowerCase().includes(q) || j.department.toLowerCase().includes(q),
   );
+  const activeCount = filteredJobs.filter((j) => j.status === "Active").length;
 
-  const handleCreateJob = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) {
-      toast.error("Please enter a job title");
-      return;
-    }
-    addJob({
-      title: newTitle,
-      department: newDept,
-      location: newLocation,
-      salary: newSalary,
-      status: "Active",
-    });
-    toast.success(`Job "${newTitle}" posted successfully!`);
-    setNewTitle("");
-    setJobModalOpen(false);
-  };
-
-  const handleCreateCandidate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!candName.trim() || !candEmail.trim()) {
-      toast.error("Please fill in candidate name and email");
-      return;
-    }
-    addCandidate({
-      name: candName,
-      role: candRole,
-      stage: candStage,
-      matchScore: candMatch,
-      appliedDate: new Date().toISOString(),
-      source: candSource,
-      sourcingCost: candSource === "LinkedIn" ? 1200 : candSource === "Referral" ? 2500 : 500,
-      email: candEmail,
-      phone: "+1 555 019 2834",
-      gender: "Woman",
-      underrepresented: true,
-      location: "Global",
-      socials: {
-        linkedin: `https://linkedin.com/in/${candName.toLowerCase().replace(/\s+/g, "-")}`,
-      },
-      skills: [
-        { name: "Systemic thinking", score: candMatch },
-        { name: "Execution", score: candMatch - 4 },
-      ],
-    });
-    toast.success(`Candidate ${candName} added successfully!`);
-    setCandName("");
-    setCandEmail("");
-    setCandidateModalOpen(false);
-    setResumeFile(null);
+  const openCandidateModal = (jobId?: string) => {
+    setCandidateJobId(jobId);
+    setCandidateModalOpen(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Recruiting workspace</p>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Job Openings & Positions
-          </h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-primary">Requisitions</p>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">Jobs</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create and manage open requisitions, post across integrated job boards, and ingest
-            candidate resumes.
+            Open requisitions, track applicants per job, and add candidates.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            onClick={() => setCandidateModalOpen(true)}
-            variant="outline"
-            className="gap-2 bg-card/60 backdrop-blur-md"
-          >
-            <UserPlus className="size-4" /> Add Candidate
+          <Button onClick={() => openCandidateModal()} variant="outline" className="gap-2">
+            <UserPlus className="size-4" /> Add candidate
           </Button>
-          <Button
-            onClick={() => setJobModalOpen(true)}
-            className="gap-2 bg-primary text-primary-foreground shadow-lg"
-          >
-            <Plus className="size-4" /> Post New Job
+          <Button onClick={() => setJobModalOpen(true)} className="gap-2">
+            <Plus className="size-4" /> New job
           </Button>
         </div>
       </div>
@@ -157,258 +109,199 @@ function JobsPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search job titles or departments..."
-            className="pl-9 bg-card/60 backdrop-blur-md border-border"
+            placeholder="Search job titles or departments…"
+            className="pl-9"
           />
         </div>
-        <div className="text-xs text-muted-foreground">
-          Showing <span className="font-bold text-foreground">{filteredJobs.length}</span> active
-          positions
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Showing <span className="font-bold text-foreground">{filteredJobs.length}</span>{" "}
+          {filteredJobs.length === 1 ? "job" : "jobs"} ·{" "}
+          <span className="font-bold text-foreground">{activeCount}</span> active
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredJobs.map((job) => (
-          <div
-            key={job.id}
-            className="glass group flex flex-col justify-between rounded-2xl border border-border/70 p-5 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/60"
-          >
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  {job.department}
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    job.status === "Active"
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                  }`}
-                >
-                  {job.status}
-                </span>
+        {filteredJobs.map((job) => {
+          const applicants = openByJob.get(job.id) ?? 0;
+          const next = nextStatus[job.status];
+          return (
+            <div
+              key={job.id}
+              className="glass group flex flex-col justify-between p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/60"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    {job.department}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      statusStyle[job.status],
+                    )}
+                  >
+                    {job.status}
+                  </span>
+                </div>
+                <h3 className="mt-3 font-display text-xl font-bold text-foreground">{job.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {job.location} · {job.salary}
+                </p>
               </div>
-              <h3 className="mt-3 font-display text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                {job.title}
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {job.location} · {job.salary}
-              </p>
-            </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                <Users className="size-4 text-primary" /> {job.applicantsCount} active applicants
-              </span>
-              <span>Posted {job.postedDate}</span>
+              <div className="mt-6 space-y-3 border-t border-border/40 pt-4 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <Link
+                    to="/pipeline"
+                    search={{ job: job.id }}
+                    className="flex items-center gap-1.5 font-medium text-foreground hover:text-primary"
+                  >
+                    <Users className="size-4 text-primary" /> {applicants} active{" "}
+                    {applicants === 1 ? "applicant" : "applicants"}
+                  </Link>
+                  <span>Posted {formatDate(job.postedDate)}</span>
+                </div>
+                <div className="flex justify-end gap-2">
+                  {job.status === "Active" && (
+                    <Button size="sm" variant="ghost" onClick={() => openCandidateModal(job.id)}>
+                      <UserPlus className="size-3.5" /> Add candidate
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setJobStatus(job.id, next.to);
+                      toast.success(`${job.title} is now ${next.to.toLowerCase()}.`);
+                    }}
+                  >
+                    {next.label}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+        {filteredJobs.length === 0 && (
+          <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
+            No jobs match “{query}”.
+          </p>
+        )}
       </div>
 
-      {/* Post New Job Modal */}
       <Dialog open={jobModalOpen} onOpenChange={setJobModalOpen}>
-        <DialogContent className="glass sm:max-w-md border-border bg-card/90 backdrop-blur-2xl">
+        <DialogContent className="glass sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
-              <Sparkles className="size-5 text-primary" /> Post New Job Opening
+              <Sparkles className="size-5 text-primary" /> New job
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Publish a new position across your integrated job boards (LinkedIn, Indeed, Google
-              Jobs) instantly.
+            <DialogDescription>
+              Save as a draft, or publish it as active to start accepting candidates.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateJob} className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="title">Job Title</Label>
-              <Input
-                id="title"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. Senior Backend Engineer"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="dept">Department</Label>
-                <Select value={newDept} onValueChange={setNewDept}>
-                  <SelectTrigger id="dept">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Engineering">Engineering</SelectItem>
-                    <SelectItem value="Design">Design</SelectItem>
-                    <SelectItem value="Product">Product</SelectItem>
-                    <SelectItem value="Growth">Growth</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                  placeholder="Remote / Hybrid"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="salary">Salary Range</Label>
-              <Input
-                id="salary"
-                value={newSalary}
-                onChange={(e) => setNewSalary(e.target.value)}
-                placeholder="e.g. $140k – $180k"
-              />
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="ghost" onClick={() => setJobModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-primary text-primary-foreground">
-                Publish Opening
-              </Button>
-            </DialogFooter>
-          </form>
+          <JobForm onDone={() => setJobModalOpen(false)} />
         </DialogContent>
       </Dialog>
 
-      {/* Add Candidate Modal (Resume upload or Manual entry) */}
-      <Dialog open={candidateModalOpen} onOpenChange={setCandidateModalOpen}>
-        <DialogContent className="glass sm:max-w-lg border-border bg-card/90 backdrop-blur-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground">
-              <UserPlus className="size-5 text-primary" /> Add Candidate (Resume or Manual)
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Upload a candidate resume for instant AI parsing, or enter details manually.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateCandidate} className="space-y-4 py-2">
-            {/* Resume Upload Box */}
-            <div className="rounded-xl border border-dashed border-border/80 bg-background/40 p-4 text-center">
-              <FileUp className="mx-auto size-8 text-primary" />
-              <p className="mt-2 text-xs font-semibold text-foreground">
-                {resumeFile ? resumeFile.name : "Drag & drop resume PDF/DOCX or click to browse"}
-              </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                AI will auto-extract skills, contact info & match score
-              </p>
-              <input
-                type="file"
-                accept=".pdf,.docx,.doc"
-                className="mt-2 text-xs"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    setResumeFile(f);
-                    setCandName(f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
-                    setCandEmail(`${f.name.toLowerCase().split(".")[0]}@candidate.ai`);
-                    setCandMatch(92);
-                    toast.success("Resume parsed successfully by AI agent!");
-                  }
-                }}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cname">Full Name</Label>
-                <Input
-                  id="cname"
-                  value={candName}
-                  onChange={(e) => setCandName(e.target.value)}
-                  placeholder="e.g. Elena Rostova"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cemail">Email Address</Label>
-                <Input
-                  id="cemail"
-                  type="email"
-                  value={candEmail}
-                  onChange={(e) => setCandEmail(e.target.value)}
-                  placeholder="elena@example.com"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="crole">Applying Role</Label>
-                <Select value={candRole} onValueChange={setCandRole}>
-                  <SelectTrigger id="crole">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {jobs.map((j) => (
-                      <SelectItem key={j.id} value={j.title}>
-                        {j.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="csource">Source Job Board</Label>
-                <Select value={candSource} onValueChange={(v) => setCandSource(v as Source)}>
-                  <SelectTrigger id="csource">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                    <SelectItem value="Referral">Referral</SelectItem>
-                    <SelectItem value="Inbound">Inbound</SelectItem>
-                    <SelectItem value="Agency">Agency</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cstage">Pipeline Stage</Label>
-                <Select value={candStage} onValueChange={(v) => setCandStage(v as Stage)}>
-                  <SelectTrigger id="cstage">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sourced">Sourced</SelectItem>
-                    <SelectItem value="Screened">Screened</SelectItem>
-                    <SelectItem value="Interviewing">Interviewing</SelectItem>
-                    <SelectItem value="Offer Sent">Offer Sent</SelectItem>
-                    <SelectItem value="Hired">Hired</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cmatch">AI Match Score (%)</Label>
-                <Input
-                  id="cmatch"
-                  type="number"
-                  min="50"
-                  max="100"
-                  value={candMatch}
-                  onChange={(e) => setCandMatch(Number(e.target.value))}
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="ghost" onClick={() => setCandidateModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-primary text-primary-foreground">
-                Add Candidate
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddCandidateDialog
+        open={candidateModalOpen}
+        onOpenChange={setCandidateModalOpen}
+        defaultJobId={candidateJobId}
+      />
     </div>
+  );
+}
+
+function JobForm({ onDone }: { onDone: () => void }) {
+  const addJob = useAtsStore((s) => s.addJob);
+  const [title, setTitle] = useState("");
+  const [department, setDepartment] = useState("Engineering");
+  const [location, setLocation] = useState("Remote");
+  const [salary, setSalary] = useState("");
+  const [status, setStatus] = useState<JobStatus>("Active");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = { title: title.trim(), location: location.trim(), salary: salary.trim() };
+    if (!clean.title) return void toast.error("Enter a job title.");
+    addJob({
+      ...clean,
+      location: clean.location || "Remote",
+      salary: clean.salary || "Not disclosed",
+      department,
+      status,
+    });
+    toast.success(`${clean.title} saved as ${status.toLowerCase()}.`);
+    onDone();
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4 py-2">
+      <div className="space-y-1.5">
+        <Label htmlFor="title">Job title</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Senior Backend Engineer"
+          required
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="dept">Department</Label>
+          <Select value={department} onValueChange={setDepartment}>
+            <SelectTrigger id="dept">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEPARTMENTS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="status">Status</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as JobStatus)}>
+            <SelectTrigger id="status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Draft">Draft</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Remote / Hybrid (City)"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="salary">Salary range</Label>
+          <Input
+            id="salary"
+            value={salary}
+            onChange={(e) => setSalary(e.target.value)}
+            placeholder="e.g. €90k – €110k"
+          />
+        </div>
+      </div>
+      <DialogFooter className="pt-2">
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="submit">Save job</Button>
+      </DialogFooter>
+    </form>
   );
 }

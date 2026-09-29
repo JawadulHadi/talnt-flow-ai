@@ -21,9 +21,7 @@ class Doc {
     this.pdf.setTextColor(255, 255, 255);
     this.pdf.setFont("helvetica", "bold").setFontSize(18).text(title, M, 16);
     this.pdf.setFont("helvetica", "normal").setFontSize(10).text(subtitle, M, 24);
-    this.pdf
-      .setFontSize(8)
-      .text(`Qeloma Agent for Recruiter · ${formatDate(new Date().toISOString())}`, M, 30);
+    this.pdf.setFontSize(8).text(`TalntFlow AI · ${formatDate(new Date().toISOString())}`, M, 30);
     this.pdf.setTextColor(30, 30, 30);
     this.y = 44;
   }

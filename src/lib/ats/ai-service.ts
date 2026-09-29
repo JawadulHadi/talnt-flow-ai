@@ -1,44 +1,70 @@
 import { buildRecommendation } from "./scoring";
-import type { Ratings, Recommendation, StarQuestion } from "./types";
+import { runLocalAgent, toAgentSnapshot, type AgentRun } from "./agent";
+import { getAgentStatus, runAgentTask, summarizeScorecard } from "./agent.functions";
+import type { Candidate, JobPosting, Ratings, Recommendation, StarQuestion } from "./types";
 
 /**
- * Qeloma Agent for Recruiter service. No AI endpoint is configured yet, so every
- * call resolves through the resilient local engine and reports fallback mode.
+ * TalntFlow Agent client. Every call tries Claude through the server functions first and
+ * falls back to the local engines; `fallback: true` tells the caller to show the offline banner.
  */
 export interface AgentResult<T> {
   data: T;
   fallback: boolean;
 }
 
-const AI_ENDPOINT: string | null = null;
-
 export async function checkAgentHealth(): Promise<boolean> {
-  if (!AI_ENDPOINT) return false;
   try {
-    const res = await fetch(`${AI_ENDPOINT}/health`, { method: "GET" });
-    return res.ok;
+    return (await getAgentStatus()).configured;
   } catch {
     return false;
   }
 }
 
 export async function evaluateScorecard(
-  candidateName: string,
+  candidate: Pick<Candidate, "name" | "role">,
   questions: StarQuestion[],
   ratings: Ratings,
 ): Promise<AgentResult<Recommendation>> {
-  const local = buildRecommendation(candidateName, questions, ratings);
-  if (!AI_ENDPOINT) return { data: local, fallback: true };
+  const local = buildRecommendation(candidate.name, questions, ratings);
   try {
-    const res = await fetch(`${AI_ENDPOINT}/scorecard`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidateName, questions, ratings }),
+    const narrative = await summarizeScorecard({
+      data: {
+        candidateName: candidate.name,
+        role: candidate.role,
+        weightedScore: local.weightedScore,
+        verdict: local.verdict,
+        items: questions.map((q) => ({
+          competency: q.competency,
+          weight: q.weight,
+          question: q.question,
+          score: ratings[q.id]?.score ?? 0,
+          note: ratings[q.id]?.note ?? "",
+        })),
+      },
     });
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as Recommendation;
-    return { data: { ...data, generatedBy: "ai" }, fallback: false };
-  } catch {
+    if (!narrative) return { data: local, fallback: true };
+    return { data: { ...local, ...narrative, generatedBy: "ai" }, fallback: false };
+  } catch (error) {
+    console.error(error);
     return { data: local, fallback: true };
   }
+}
+
+export async function runAgent(
+  task: string,
+  state: {
+    candidates: Candidate[];
+    jobs: JobPosting[];
+    ratings: Record<string, Ratings>;
+    questions: StarQuestion[];
+  },
+): Promise<AgentResult<AgentRun>> {
+  const snapshot = toAgentSnapshot(state);
+  try {
+    const run = await runAgentTask({ data: { task, snapshot } });
+    if (run) return { data: run, fallback: false };
+  } catch (error) {
+    console.error(error);
+  }
+  return { data: runLocalAgent(snapshot), fallback: true };
 }
