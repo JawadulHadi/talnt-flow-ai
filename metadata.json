@@ -1,5 +1,5 @@
 {
-  "name": "Talnt Hub",
-  "description": "Modern Applicant Tracking System with pipeline management, AI candidate scoring, deliverables, and scorecards.",
+  "name": "TalntFlow AI",
+  "description": "TalntFlow AI — Autonomous ATS, AI Candidate Scoring, and Multi-Job Board Integration Hub.",
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -6,6 +6,7 @@ import {
   FileText,
   KanbanSquare,
   RotateCcw,
+  Sparkles,
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,11 +68,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       <header className="sticky top-0 z-30 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to="/" className="mr-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-semibold text-foreground">Qeloma</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-muted-foreground sm:inline">
-              Agent for Recruiter
-            </span>
+          <Link to="/" className="mr-2 flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/20 text-primary shadow-inner">
+              <Sparkles className="size-5" />
+            </div>
+            <div>
+              <span className="font-display text-xl font-bold tracking-tight text-foreground">
+                TalntFlow<span className="text-primary">.ai</span>
+              </span>
+              <span className="hidden text-[10px] uppercase tracking-[0.2em] text-muted-foreground sm:block">
+                ATS & Job Board Hub
+              </span>
+            </div>
           </Link>
           <nav className="flex flex-1 flex-wrap gap-1">
             {nav.map(({ to, label, icon: Icon }) => (

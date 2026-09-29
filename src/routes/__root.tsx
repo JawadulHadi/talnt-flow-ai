@@ -79,8 +79,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Qeloma Agent for Recruiter" },
-      { name: "description", content: "AI-assisted applicant tracking for executive recruiters." },
+      { title: "TalntFlow AI — Autonomous ATS & Job Board Hub" },
+      {
+        name: "description",
+        content:
+          "Autonomous AI platform, ATS, and multi-job board integration suite for executive recruiting.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
